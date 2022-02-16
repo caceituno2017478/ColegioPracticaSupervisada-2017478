@@ -93,36 +93,39 @@ function login(req,res){
 }
 
 function agregarCursos(req, res) { 
-
     if(req.user.rol === "ROL_ALUMNO"){
-       // Alumnos.find(req.user.sub,(err,cursos)=>{
-        //     console.log(cursos)
-        //     console.log(req.user.sub)
-        // })
         var parametros = req.body;
+        var revision = false;
         Cursos.findOne({nombre: parametros.nombreCurso},(err, cursoEncontrado) => {
             if(err) return res.status(500).send({mensaje: `Error en la peticion ${err}`})
             if(cursoEncontrado !== null){
-            //     Alumnos.findOne({"cursos.nombreCurso": parametros.nombreCurso},(err, cursoVerificacion)=>{
-            //         if(err) return res.status(500).send({mensaje: "Error en la peticion"})
-            //         console.log("cursoVerificacion")
-            //         console.log(cursoVerificacion)
-            //         if(cursoVerificacion.cursos.length <= 3){
-            //             if(cursoVerificacion.nombreCurso === parametros.nombre){
-                            Alumnos.findByIdAndUpdate(req.user.sub, { $push: { cursos: {nombreCurso: cursoEncontrado.nombre,
-                                idCursoA: cursoEncontrado.id} } },{new: true},(err,repuestaAgregada) => {
-                                    if(err) return res.status(500).send({mensaje: "Error en la peticion"})
-                                    if(!repuestaAgregada) return res.status(404).send({mensaje: "Error al agregar la encuesta"})
-                                    return res.status(200).send({encuesta: repuestaAgregada})
-                            })
-            //             }else{
-            //                 return res.status(404).send({mensaje: "ya te has asignado a ese curso"})
-            //             }
-            //         }else{
-            //             return res.status(404).send({mensaje: "Te has asignado al maximo de cursos"})
-            //         }
+            Alumnos.findById(req.user.sub,(err,verficacionLogitud)=>{
+                if(err) return res.status(500).send({mensaje: "Error en la peticion"})
+                console.log(verficacionLogitud.cursos.length)
+                if(verficacionLogitud.cursos.length <= 2){
+                    var arrayCursos = {};
+                    arrayCursos = verficacionLogitud.cursos;
+                    arrayCursos.forEach(element => {
+                        if(element.nombreCurso=== parametros.nombreCurso){
+                            revision = true;
+                            return res.status(404).send({mensaje: "Ya se asignado a ese curso"})
+                            
+                        }
+                    });
+
+                    if(revision === false){
+                        Alumnos.findByIdAndUpdate(req.user.sub, { $push: { cursos: {nombreCurso: cursoEncontrado.nombre,
+                            idCursoA: cursoEncontrado.id} } },{new: true},(err,repuestaAgregada) => {
+                                if(err) return res.status(500).send({mensaje: "Error en la peticion"})
+                                if(!repuestaAgregada) return res.status(404).send({mensaje: "Error al agregar la encuesta"})
+                                return res.status(200).send({encuesta: repuestaAgregada})
+                        })
+                    }
                     
-            //     }) 
+                }else{
+                    return res.status(404).send({mensaje: "Te has asignado al maximo de cursos"})
+                } 
+            })
             }else{
                 return res.status(200).send({mensaje: "El curso no existe"})
             }
@@ -133,13 +136,15 @@ function agregarCursos(req, res) {
 }
 
 
-
 function editarCursos(req,res){
     if(req.user.rol === "ROL_ALUMNO"){
         var idCur = req.params.idCurso;
         var parametros = req.body;
-        Alumnos.findOne(req.user.sub,{"cursos._id":idCur},(err,cursoEncontrado) =>{
-            if(err) return res.status(500).send({mensaje:"Error en la peticion"})
+        Alumnos.findOne({"cursos._id": idCur},(err,cursoEncontrado) =>{
+            console.log(cursoEncontrado)
+            console.log(cursoEncontrado.cursos.nombreCurso)
+            console.log(cursoEncontrado.cursos._id)
+            if(err) return res.status(500).send({mensaje:`Error en la peticion ${err}`})
             Alumnos.findOneAndUpdate({cursos: {$elemMatch: {_id: idCur, idCursoA: cursoEncontrado.id }}},
                 {"cursos.$.nombreCurso": parametros.nombreCurso}
                 ,{new: true},(err, respuestaEditada) => {
@@ -157,10 +162,10 @@ function editarCursos(req,res){
 }
 
 function listarCursos(req, res) {
-    Alumnos.findOne({curso:{nombreCurso: "todos"}},(err, cursosAsignados) => {
+    Alumnos.findById(req.user.sub,(err, cursosAsignados) => {
         if(err) return res.status(500).send({mensaje: `error en la peticion ${err}`})
         if(!cursosAsignados) return res.status(404).send({mensaje: `No se a podido cambiar de curso ${cursosAsignados}`}) 
-        return res.status(200).send({curso: cursosAsignados})
+        return res.status(200).send({curso: cursosAsignados.cursos})
     })
 }
 
